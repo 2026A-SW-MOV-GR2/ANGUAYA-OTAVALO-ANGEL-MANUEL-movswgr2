@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">PuenteReactNative</string>
+    <string name="saludo">Hello World!!!</string>
+    <string name="orientacion_label">Orientación: Vertical</string>
+</resources>
