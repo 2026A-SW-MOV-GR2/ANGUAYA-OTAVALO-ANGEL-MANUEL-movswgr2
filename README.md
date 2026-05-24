@@ -1,97 +1,142 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# TiendaTecno 🛒
 
-# Getting Started
+Aplicación móvil desarrollada en **React Native** para la materia de Aplicaciones Móviles
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+Implementar conectividad REST con JSONPlaceholder y almacenamiento seguro usando las APIs nativas de Android.
 
-## Step 1: Start Metro
+---
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Módulos implementados
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+| Módulo | Descripción |
+|--------|-------------|
+| **Tienda (CRUD)** | Listado, creación, edición y eliminación de productos con estado reactivo |
+| **API REST** | Consulta (GET) y actualización (PUT) de posts desde JSONPlaceholder con manejo de loading states |
+| **Almacenamiento Seguro** | Guardado y recuperación de secretos en SharedPreferences, DataStore y EncryptedSharedPreferences |
+
+---
+
+## Estructura del proyecto
+
+```
+src/
+├── data/
+│   └── productosIniciales.ts       # Datos iniciales hardcoded
+├── navigation/
+│   └── AppNavigator.tsx            # Pestañas + Stack CRUD
+├── screens/
+│   ├── ListadoScreen.tsx           # Lista de productos (CRUD)
+│   ├── FormularioScreen.tsx        # Crear / Editar producto
+│   ├── ApiScreen.tsx               # Módulo 1 — API REST
+│   └── SecretosScreen.tsx          # Módulo 3 — Almacenamiento Seguro
+├── services/
+│   ├── apiService.ts               # Lógica HTTP (fetch nativo)
+│   └── secretosService.ts          # Lógica de almacenamiento
+└── styles/
+    └── theme.ts                    # Colores y tokens Material Design 3
+```
+
+---
+
+## Requisitos previos
+
+- Node.js v20+
+- JDK 17
+- Android Studio con SDK configurado
+- Variable de entorno `ANDROID_HOME` activa
+- Emulador Android corriendo (minSdkVersion 23)
+
+---
+
+## Instalación
+
+### 1. Clonar e instalar dependencias
 
 ```sh
-# Using npm
+npm install
+```
+
+### 2. Librerías utilizadas
+
+**Navegación:**
+```sh
+npm install @react-navigation/native @react-navigation/bottom-tabs @react-navigation/native-stack
+npm install react-native-screens react-native-safe-area-context
+```
+
+**Almacenamiento:**
+```sh
+npm install @react-native-async-storage/async-storage
+npm install react-native-mmkv
+npm install react-native-nitro-modules
+npm install react-native-encrypted-storage
+```
+
+> **Importante:** después de instalar `react-native-mmkv` y `react-native-encrypted-storage` es obligatorio recompilar con `npm run android` porque tienen código nativo.
+
+---
+
+## Ejecutar la app
+
+### 1. Iniciar Metro
+
+```sh
 npm start
-
-# OR using Yarn
-yarn start
 ```
 
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
+### 2. Compilar y correr en Android
 
 ```sh
-# Using npm
+# En otra terminal
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
+La primera compilación tarda 5–10 minutos. Espera el mensaje `BUILD SUCCESSFUL`.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+Si necesitas limpiar la caché de Metro:
 
 ```sh
-bundle install
+npm start -- --reset-cache
 ```
 
-Then, and every time you update your native dependencies, run:
+Si necesitas limpiar Gradle:
 
 ```sh
-bundle exec pod install
+cd android && gradlew clean && cd .. && npm run android
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+---
 
-```sh
-# Using npm
-npm run ios
+## Mapeo a APIs nativas de Android
 
-# OR using Yarn
-yarn ios
-```
+| Librería React Native | API nativa Android equivalente |
+|-----------------------|-------------------------------|
+| `AsyncStorage` | SharedPreferences |
+| `react-native-mmkv` | DataStore (Jetpack) |
+| `react-native-encrypted-storage` | EncryptedSharedPreferences (AES-256) |
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+---
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## Solución de errores comunes
 
-## Step 3: Modify your app
+**`Cannot find module 'react-native-mmkv'`**
+→ Recompilar: `cd android && gradlew clean && cd .. && npm run android`
 
-Now that you have successfully run the app, let's make changes!
+**`react-native-encrypted-storage` no funciona**
+→ Verificar que `minSdkVersion = 23` en `android/build.gradle`
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+**`Network request failed` al hacer GET/PUT**
+→ Asegurarse de tener `android:usesCleartextTraffic="true"` en `AndroidManifest.xml`
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+**App en blanco / pantalla negra**
+→ Verificar que Metro esté corriendo (`npm start`) y que `App.tsx` use `AppNavigator`
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+---
 
-## Congratulations! :tada:
+## Recursos
 
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- [React Native — Documentación oficial](https://reactnative.dev/docs/getting-started)
+- [React Navigation](https://reactnavigation.org/)
+- [react-native-mmkv](https://github.com/mrousavy/react-native-mmkv)
+- [react-native-encrypted-storage](https://github.com/emeraldsanto/react-native-encrypted-storage)
+- [JSONPlaceholder](https://jsonplaceholder.typicode.com/)
