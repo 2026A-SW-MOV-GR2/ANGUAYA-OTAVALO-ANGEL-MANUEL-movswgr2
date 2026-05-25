@@ -10,49 +10,49 @@ import {
   ToastAndroid,
 } from 'react-native';
 import { Producto } from '../data/productosIniciales';
+import { IProductoRepository } from '../repositories/IProductoRepository';
 import { theme } from '../styles/theme';
 
 type Props = {
-  productoEditar: Producto | null;          
+  repo: IProductoRepository;
+  productoEditar: Producto | null;
   onGuardar: (producto: Producto) => void;
   onCancelar: () => void;
 };
 
 export default function FormularioScreen({
+  repo,
   productoEditar,
   onGuardar,
   onCancelar,
 }: Props) {
-  // Estados para cada campo del formulario.
-  // Si hay un producto para editar, se inicializa con sus valores.
-  const [nombre, setNombre] = useState(productoEditar?.nombre ?? '');
-  const [precio, setPrecio] = useState(productoEditar?.precio?.toString() ?? '');
+  const [nombre,    setNombre]    = useState(productoEditar?.nombre    ?? '');
+  const [precio,    setPrecio]    = useState(productoEditar?.precio?.toString()  ?? '');
   const [categoria, setCategoria] = useState(productoEditar?.categoria ?? '');
-  const [stock, setStock] = useState(productoEditar?.stock?.toString() ?? '');
-  const [imagen, setImagen] = useState(productoEditar?.imagen ?? '');
-  const [disponible, setDisponible] = useState(productoEditar?.disponible ?? true);
+  const [stock,     setStock]     = useState(productoEditar?.stock?.toString()   ?? '');
+  const [imagen,    setImagen]    = useState(productoEditar?.imagen    ?? '');
+  const [disponible,setDisponible]= useState(productoEditar?.disponible ?? true);
 
   const esEdicion = productoEditar !== null;
 
-  // Función que se ejecuta al presionar "Guardar"
-  const handleGuardar = () => {
-    // Validación: campos obligatorios
+  const handleGuardar = async () => {
     if (!nombre.trim() || !precio.trim() || !categoria.trim()) {
       ToastAndroid.show('Completa los campos obligatorios', ToastAndroid.SHORT);
       return;
     }
 
-    // Se construye el objeto producto.
-    // Si es edición, mantenemos el id; si es creación, generamos uno nuevo.
     const producto: Producto = {
-      id: productoEditar?.id ?? Date.now().toString(),
-      nombre: nombre.trim(),
-      precio: parseFloat(precio) || 0,
-      categoria: categoria.trim(),
-      stock: parseInt(stock, 10) || 0,
-      imagen: imagen.trim() || 'https://via.placeholder.com/150',
+      id:         productoEditar?.id ?? Date.now().toString(),
+      nombre:     nombre.trim(),
+      precio:     parseFloat(precio) || 0,
+      categoria:  categoria.trim(),
+      stock:      parseInt(stock, 10) || 0,
+      imagen:     imagen.trim() || 'https://via.placeholder.com/150',
       disponible,
     };
+
+    console.log(`[INFO] Guardando "${producto.nombre}" en ${repo.constructor.name}`);
+    await repo.guardar(producto);
 
     onGuardar(producto);
     ToastAndroid.show(
@@ -63,7 +63,6 @@ export default function FormularioScreen({
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.titulo}>
           {esEdicion ? 'Editar Producto' : 'Nuevo Producto'}
@@ -71,7 +70,6 @@ export default function FormularioScreen({
       </View>
 
       <ScrollView contentContainerStyle={styles.form}>
-        {/* TextInput: se mapea a android.widget.EditText nativo */}
         <Text style={styles.label}>Nombre *</Text>
         <TextInput
           style={styles.input}
@@ -119,8 +117,6 @@ export default function FormularioScreen({
           placeholderTextColor={theme.colors.outline}
         />
 
-        {/* Switch: se mapea a android.widget.Switch nativo.
-            Cumple el requerimiento de "switches" del taller. */}
         <View style={styles.switchRow}>
           <Text style={styles.label}>Disponible para venta</Text>
           <Switch
@@ -131,7 +127,6 @@ export default function FormularioScreen({
           />
         </View>
 
-        {/* Botones de acción */}
         <View style={styles.botonera}>
           <TouchableOpacity
             style={[styles.boton, styles.botonCancelar]}
@@ -181,7 +176,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontWeight: '500',
   },
-  // Input estilo Material 3: bordes redondeados, fondo claro
   input: {
     backgroundColor: theme.colors.surface,
     borderWidth: 1,

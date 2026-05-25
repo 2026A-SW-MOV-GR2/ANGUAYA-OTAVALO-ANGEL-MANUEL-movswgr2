@@ -11,22 +11,33 @@ import SecretosScreen from '../screens/SecretosScreen';
 import { Producto, productosIniciales } from '../data/productosIniciales';
 import { theme } from '../styles/theme';
 
+// Repositorios
+import { IProductoRepository } from '../repositories/IProductoRepository';
+import { SQLiteProductoRepository } from '../repositories/SQLiteProductoRepository';
+import { MMKVProductoRepository } from '../repositories/MMKVProductoRepository';
+
+// Singletons: se instancian una sola vez fuera del componente
+const sqliteRepo = new SQLiteProductoRepository();
+const mmkvRepo   = new MMKVProductoRepository();
+
 // Tipos para el stack del CRUD
 type CrudStackParamList = {
   Listado: undefined;
   Formulario: { productoEditar: Producto | null };
 };
 
-const Tab = createBottomTabNavigator();
+const Tab  = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<CrudStackParamList>();
 
-// Stack que agrupa Listado y Formulario (el CRUD)
+// ── Stack interno del CRUD ────────────────────────────────────────────────────
 function CrudStack({
-  productos,
-  setProductos,
+  repo,
+  usaSQL,
+  onToggleMotor,
 }: {
-  productos: Producto[];
-  setProductos: React.Dispatch<React.SetStateAction<Producto[]>>;
+  repo: IProductoRepository;
+  usaSQL: boolean;
+  onToggleMotor: () => void;
 }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -34,15 +45,14 @@ function CrudStack({
         {(props) => (
           <ListadoScreen
             {...props}
-            productos={productos}
+            repo={repo}
+            usaSQL={usaSQL}
+            onToggleMotor={onToggleMotor}
             onCrear={() =>
               props.navigation.navigate('Formulario', { productoEditar: null })
             }
             onEditar={(producto) =>
               props.navigation.navigate('Formulario', { productoEditar: producto })
-            }
-            onEliminar={(id) =>
-              setProductos((prev) => prev.filter((p) => p.id !== id))
             }
           />
         )}
@@ -52,17 +62,9 @@ function CrudStack({
         {(props) => (
           <FormularioScreen
             {...props}
+            repo={repo}
             productoEditar={props.route.params.productoEditar}
-            onGuardar={(producto) => {
-              setProductos((prev) => {
-                const existe = prev.find((p) => p.id === producto.id);
-                if (existe) {
-                  return prev.map((p) => (p.id === producto.id ? producto : p));
-                }
-                return [producto, ...prev];
-              });
-              props.navigation.goBack();
-            }}
+            onGuardar={() => props.navigation.goBack()}
             onCancelar={() => props.navigation.goBack()}
           />
         )}
@@ -71,9 +73,11 @@ function CrudStack({
   );
 }
 
-// Navegador principal con 3 pestañas inferiores
+// ── Navegador principal ───────────────────────────────────────────────────────
 export default function AppNavigator() {
-  const [productos, setProductos] = useState<Producto[]>(productosIniciales);
+  // true = SQLite (Posición A), false = MMKV (Posición B)
+  const [usaSQL, setUsaSQL] = useState(true);
+  const repo: IProductoRepository = usaSQL ? sqliteRepo : mmkvRepo;
 
   return (
     <NavigationContainer>
@@ -93,7 +97,13 @@ export default function AppNavigator() {
             ),
           }}
         >
-          {() => <CrudStack productos={productos} setProductos={setProductos} />}
+          {() => (
+            <CrudStack
+              repo={repo}
+              usaSQL={usaSQL}
+              onToggleMotor={() => setUsaSQL(prev => !prev)}
+            />
+          )}
         </Tab.Screen>
 
         <Tab.Screen

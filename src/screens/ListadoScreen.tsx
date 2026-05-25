@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,30 +8,48 @@ import {
   TouchableOpacity,
   Alert,
   ToastAndroid,
+  Switch,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Producto } from '../data/productosIniciales';
+import { IProductoRepository } from '../repositories/IProductoRepository';
 import { theme } from '../styles/theme';
 
-// Props que recibe la pantalla desde App.tsx
 type Props = {
-  productos: Producto[];
-  onCrear: () => void;                    // Navegar a formulario en modo CREATE
-  onEditar: (producto: Producto) => void; // Navegar a formulario en modo UPDATE
-  onEliminar: (id: string) => void;       // Eliminar del array
+  repo: IProductoRepository;
+  usaSQL: boolean;
+  onToggleMotor: () => void;
+  onCrear: () => void;
+  onEditar: (producto: Producto) => void;
 };
 
 export default function ListadoScreen({
-  productos,
+  repo,
+  usaSQL,
+  onToggleMotor,
   onCrear,
   onEditar,
-  onEliminar,
 }: Props) {
+  const [productos, setProductos] = useState<Producto[]>([]);
 
-  // Función que dispara el FLUJO DE ELIMINACIÓN del taller.
-  // Cumple: "Long press o botón rojo -> Dispara confirmación de borrado"
+  // useFocusEffect se ejecuta al montar Y cada vez que se vuelve a esta pantalla
+  // (incluye volver desde FormularioScreen con goBack)
+  // También se re-ejecuta cuando cambia repo o usaSQL (cambio de motor)
+  useFocusEffect(
+    useCallback(() => {
+      const cargar = async () => {
+        console.log(`[INFO] Cargando productos desde ${usaSQL ? 'SQLite' : 'MMKV'}...`);
+        await repo.inicializar();
+        const datos = await repo.obtenerTodos();
+        setProductos(datos);
+        console.log(`[INFO] ${datos.length} productos cargados en UI.`);
+      };
+      cargar();
+    }, [repo, usaSQL])
+  );
+
+  // Eliminar usando el repositorio activo
   const confirmarEliminar = (producto: Producto) => {
-    // Alert.alert es el Dialog/Modal NATIVO de Android.
-    // En el Layout Inspector se ve como android.app.AlertDialog.
     Alert.alert(
       'Eliminar producto',
       `¿Estás seguro de eliminar "${producto.nombre}"?`,
@@ -40,12 +58,12 @@ export default function ListadoScreen({
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => {
-            onEliminar(producto.id);
-            // ToastAndroid se mapea a android.widget.Toast nativo.
-            // Cumple: "tras la acción, mostrar un Toast de éxito"
+          onPress: async () => {
+            console.log(`[INFO] Eliminando "${producto.nombre}" de ${usaSQL ? 'SQLite' : 'MMKV'}`);
+            await repo.eliminar(producto.id);
+            setProductos(prev => prev.filter(p => p.id !== producto.id));
             ToastAndroid.show(
-              `"${producto.nombre}" eliminado correctamente`,
+              `"${producto.nombre}" eliminado`,
               ToastAndroid.SHORT,
             );
           },
@@ -54,32 +72,27 @@ export default function ListadoScreen({
     );
   };
 
-  // Renderizado de cada item de la lista (cada tarjeta de producto).
   const renderItem = ({ item }: { item: Producto }) => (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => onEditar(item)}              // Click corto: editar (UPDATE)
-      onLongPress={() => confirmarEliminar(item)} // Click largo: eliminar (DELETE)
+      onPress={() => onEditar(item)}
+      onLongPress={() => confirmarEliminar(item)}
       activeOpacity={0.7}
     >
-      {/* Image se mapea a android.widget.ImageView */}
       <Image source={{ uri: item.imagen }} style={styles.imagen} />
 
-      {/* Información del producto */}
       <View style={styles.info}>
-        {/* Cada Text se mapea a android.widget.TextView */}
         <Text style={styles.nombre} numberOfLines={1}>{item.nombre}</Text>
         <Text style={styles.categoria}>{item.categoria}</Text>
         <Text style={styles.precio}>${item.precio}</Text>
         <Text style={[
           styles.stock,
-          { color: item.stock === 0 ? theme.colors.error : theme.colors.success }
+          { color: item.stock === 0 ? theme.colors.error : theme.colors.success },
         ]}>
           {item.stock === 0 ? 'Sin stock' : `Stock: ${item.stock}`}
         </Text>
       </View>
 
-      {/* Botón rojo de eliminar (también dispara confirmación) */}
       <TouchableOpacity
         style={styles.botonEliminar}
         onPress={() => confirmarEliminar(item)}
@@ -91,15 +104,37 @@ export default function ListadoScreen({
 
   return (
     <View style={styles.container}>
-      {/* Header de la pantalla */}
+      {/* ── Header con Switch y Chip ── */}
       <View style={styles.header}>
-        <Text style={styles.titulo}>TiendaTecno</Text>
-        <Text style={styles.subtitulo}>{productos.length} productos disponibles</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.titulo}>TiendaTecno</Text>
+
+          <View style={styles.switchContainer}>
+            {/* Chip de color: verde = SQL, naranja = NoSQL */}
+            <View style={[
+              styles.chip,
+              { backgroundColor: usaSQL ? '#22C55E' : '#F97316' },
+            ]}>
+              <Text style={styles.chipTexto}>
+                {usaSQL ? 'SQL' : 'NoSQL'}
+              </Text>
+            </View>
+
+            {/* Switch: izquierda = SQL, derecha = NoSQL */}
+            <Switch
+              value={!usaSQL}
+              onValueChange={onToggleMotor}
+              trackColor={{ false: '#22C55E', true: '#F97316' }}
+              thumbColor="white"
+            />
+          </View>
+        </View>
+
+        <Text style={styles.subtitulo}>
+          {productos.length} productos · {usaSQL ? 'SQLite (Relacional)' : 'MMKV Store (NoSQL)'}
+        </Text>
       </View>
 
-      {/* FlatList: componente nativo de listas eficientes.
-          Internamente usa RecyclerView de Android.
-          Cumple: "Una lista (RecyclerView o equivalente)" */}
       <FlatList
         data={productos}
         keyExtractor={(item) => item.id}
@@ -107,12 +142,12 @@ export default function ListadoScreen({
         contentContainerStyle={styles.lista}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <Text style={styles.vacio}>No hay productos. Toca + para agregar.</Text>
+          <Text style={styles.vacio}>
+            No hay productos en {usaSQL ? 'SQLite' : 'MMKV'}.{'\n'}Toca + para agregar.
+          </Text>
         }
       />
 
-      {/* FAB (Floating Action Button) - botón flotante de Material Design 3.
-          Cumple: "Click en botón flotante -> Navega a Formulario (Create)" */}
       <TouchableOpacity style={styles.fab} onPress={onCrear} activeOpacity={0.8}>
         <Text style={styles.fabTexto}>+</Text>
       </TouchableOpacity>
@@ -128,25 +163,44 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: theme.colors.primary,
     paddingTop: 50,
-    paddingBottom: 20,
+    paddingBottom: 16,
     paddingHorizontal: 20,
     elevation: theme.elevation.level2,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   titulo: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
     color: theme.colors.onPrimary,
   },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  chipTexto: {
+    color: 'white',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
   subtitulo: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.onPrimary,
     opacity: 0.9,
-    marginTop: 4,
+    marginTop: 6,
   },
   lista: {
     padding: 16,
   },
-  // Tarjeta con bordes redondeados y elevación: Material 3
   card: {
     flexDirection: 'row',
     backgroundColor: theme.colors.surface,
@@ -200,8 +254,8 @@ const styles = StyleSheet.create({
     marginTop: 50,
     color: theme.colors.outline,
     fontSize: 16,
+    lineHeight: 26,
   },
-  // FAB: botón flotante circular Material Design 3
   fab: {
     position: 'absolute',
     bottom: 24,
